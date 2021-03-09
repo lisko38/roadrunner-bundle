@@ -1,13 +1,75 @@
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php bin/console baldinof:roadrunner:worker"
+  relay: "unix://var/roadrunner.sock"
+  relay_timeout: 20s
+
 http:
-  address: "0.0.0.0:8080"
-
+  # host and port separated by semicolon
+  address: 0.0.0.0:8080
+  max_request_size: 4096
+  # middlewares for the http plugin, order matters
+  middleware: [ "static", "gzip", "headers" ]
+  # uploads
   uploads:
-    forbid: [".php", ".exe", ".bat"]
+    forbid: [".php", ".exe", ".bat", ".sh", ".iso"]
+  trusted_subnets:
+    [
+      "10.0.0.0/8",
+      "127.0.0.0/8",
+      "172.16.0.0/12",
+      "192.168.0.0/16",
+      "::1/128",
+      "fc00::/7",
+      "fe80::/10",
+    ]
 
-  workers:
-    command: "php bin/console baldinof:roadrunner:worker"
-    relay: "unix://var/roadrunner.sock"
+  pool:
+    num_workers: 1
+    max_jobs: 100
+    #        debug: true
+    allocate_timeout: 60s
+    destroy_timeout: 60s
+    supervisor:
+      watch_tick: 1s
+      max_worker_memory: 500
 
-static:
-  dir:   "public"
-  forbid: [".php", ".htaccess"]
+  headers:
+    cors:
+      allowedOrigin: "*"
+      allowedHeaders: "*"
+      allowedMethods: "GET,POST,PUT,DELETE"
+      allowCredentials: true
+      exposedHeaders: "Cache-Control,Content-Language,Content-Type,Expires,Last-Modified,Pragma"
+      maxAge: 3600
+  static:
+    dir:   "/srv/sylius/public"
+
+logs:
+  # default
+  mode: development
+  level: debug
+  encoding: console
+  output: stderr
+  err_output: stderr
+  channels:
+    http:
+      mode: development
+      level: panic
+      encoding: console
+      output: stdout
+
+reload:
+  interval: 1s
+  patterns: [ ".php" ]
+  plugins:
+    http:
+      recursive: true
+      ignore: [ "vendor" ]
+      patterns: [ ".php", ".go", ".md"  ]
+      dirs: [ "." ]
+limit:
+  interval: 1
+
